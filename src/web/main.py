@@ -14,10 +14,8 @@ from src.config.prompts import (
     SYSTEM_PROMPT_GENERIC,
     SYSTEM_PROMPT_NEWS,
 )
-from src.core.agent_orchestrator import AgentOrchestrator
 from src.core.orchestrator import ScraperOrchestrator
 from src.core.storage import StorageManager
-from src.models.agent import AgentExecutionRequest
 from src.models.article import Article
 from src.models.custom import GenericListPage, GuidedExtractionResult
 from src.models.product import ProductListPage
@@ -59,15 +57,7 @@ SCRAPE_VALIDATION_FAILURES_TOTAL = Counter(
     "scrape_validation_failures_total",
     "Falhas de validacao de schema",
 )
-AGENT_ACTIONS_TOTAL = Counter(
-    "agent_actions_total",
-    "Total de acoes executadas pelo agente",
-    ["status"],
-)
-AGENT_EXEC_DURATION_SECONDS = Histogram(
-    "agent_execution_duration_seconds",
-    "Duracao das execucoes do agente Selenium",
-)
+
 
 
 class ScrapeRequest(BaseModel):
@@ -85,6 +75,7 @@ class ScrapeRequest(BaseModel):
     screenshot_quality: int = Field(default=70, ge=30, le=100)
     auto_scroll: bool = True
     scroll_steps: int = Field(default=6, ge=1, le=20)
+    output_format: str = Field(default="list", pattern="^(list|summary|report)$")
 
 
 app.add_middleware(
@@ -153,6 +144,7 @@ async def scrape(payload: ScrapeRequest) -> dict[str, Any]:
         screenshot_quality=payload.screenshot_quality,
         auto_scroll=payload.auto_scroll,
         scroll_steps=payload.scroll_steps,
+        output_format=payload.output_format,
     )
     elapsed = time.perf_counter() - start
     SCRAPE_DURATION_SECONDS.observe(elapsed)
@@ -186,50 +178,5 @@ async def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
-@app.post("/api/scrape-agent")
-async def scrape_agent(payload: AgentExecutionRequest) -> dict[str, Any]:
-    """Executa fluxo multi-step com Selenium controlado por IA."""
-    schema_cls = SCHEMA_MAP.get(payload.schema)
-    if not schema_cls:
-        return {"success": False, "error": f"Schema invalido: {payload.schema}"}
 
-    started = time.perf_counter()
-    orchestrator = AgentOrchestrator()
-    result = await orchestrator.run(
-        url=str(payload.url),
-        goal=payload.goal,
-        schema=schema_cls,
-        max_steps=payload.max_steps,
-        headless=payload.headless,
-    )
-    elapsed = time.perf_counter() - started
-    AGENT_EXEC_DURATION_SECONDS.observe(elapsed)
-    for step in result.steps:
-        AGENT_ACTIONS_TOTAL.labels(status="success" if step.success else "error").inc()
-
-    storage = StorageManager()
-    await storage.initialize()
-    execution_id = await storage.save_agent_execution(
-        url=str(payload.url),
-        goal=payload.goal,
-        result_payload=result.model_dump(),
-    )
-    await storage.save_agent_steps(execution_id, [step.model_dump() for step in result.steps])
-    await storage.close()
-
-    payload_out = result.model_dump()
-    payload_out["execution_id"] = execution_id
-    payload_out.setdefault("metadata", {})
-    payload_out["metadata"]["duration_seconds"] = elapsed
-    return payload_out
-
-
-@app.get("/api/executions/{execution_id}/steps")
-async def execution_steps(execution_id: int) -> dict[str, Any]:
-    """Retorna timeline de steps de uma execucao do agente."""
-    storage = StorageManager()
-    await storage.initialize()
-    steps = await storage.get_execution_steps(execution_id)
-    await storage.close()
-    return {"success": True, "execution_id": execution_id, "count": len(steps), "steps": steps}
 

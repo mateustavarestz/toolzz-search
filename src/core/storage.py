@@ -42,34 +42,7 @@ Index("idx_scraping_results_url", scraping_results.c.url)
 Index("idx_scraping_results_created_at", scraping_results.c.created_at)
 Index("idx_scraping_results_success", scraping_results.c.success)
 
-agent_executions = Table(
-    "agent_executions",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("url", String(2048), nullable=False),
-    Column("goal", String(2048), nullable=False),
-    Column("created_at", DateTime, nullable=False),
-    Column("success", Boolean, nullable=False, default=False),
-    Column("cost_usd", Float, nullable=False, default=0.0),
-    Column("payload", JSON, nullable=False),
-)
-Index("idx_agent_executions_created_at", agent_executions.c.created_at)
-Index("idx_agent_executions_success", agent_executions.c.success)
 
-agent_steps = Table(
-    "agent_steps",
-    metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("execution_id", Integer, nullable=False),
-    Column("step_index", Integer, nullable=False),
-    Column("created_at", DateTime, nullable=False),
-    Column("success", Boolean, nullable=False, default=False),
-    Column("action", JSON, nullable=False),
-    Column("state_snapshot", JSON, nullable=False),
-    Column("error", String(2048), nullable=True),
-)
-Index("idx_agent_steps_execution_id", agent_steps.c.execution_id)
-Index("idx_agent_steps_created_at", agent_steps.c.created_at)
 
 
 class StorageManager:
@@ -160,58 +133,7 @@ class StorageManager:
             rows = (await conn.execute(stmt)).mappings()
             return [dict(row) for row in rows]
 
-    async def save_agent_execution(
-        self,
-        url: str,
-        goal: str,
-        result_payload: dict[str, Any],
-    ) -> int:
-        created_at = datetime.utcnow()
-        safe_payload = self._normalize_for_json(result_payload)
-        success = bool(safe_payload.get("success", False)) if isinstance(safe_payload, dict) else False
-        cost = (
-            float((safe_payload.get("metadata", {}) or {}).get("cost_usd", 0))
-            if isinstance(safe_payload, dict)
-            else 0.0
-        )
-        async with self.engine.begin() as conn:
-            result = await conn.execute(
-                agent_executions.insert().values(
-                    url=url,
-                    goal=goal,
-                    created_at=created_at,
-                    success=success,
-                    cost_usd=cost,
-                    payload=safe_payload,
-                )
-            )
-            return int(result.inserted_primary_key[0])
 
-    async def save_agent_steps(self, execution_id: int, steps: list[dict[str, Any]]) -> None:
-        now = datetime.utcnow()
-        async with self.engine.begin() as conn:
-            for step in steps:
-                await conn.execute(
-                    agent_steps.insert().values(
-                        execution_id=execution_id,
-                        step_index=int(step.get("step_index", 0)),
-                        created_at=now,
-                        success=bool(step.get("success", False)),
-                        action=self._normalize_for_json(step.get("action", {})),
-                        state_snapshot=self._normalize_for_json(step.get("state_snapshot", {})),
-                        error=str(step.get("error")) if step.get("error") else None,
-                    )
-                )
-
-    async def get_execution_steps(self, execution_id: int) -> list[dict[str, Any]]:
-        stmt = (
-            select(agent_steps)
-            .where(agent_steps.c.execution_id == execution_id)
-            .order_by(agent_steps.c.step_index.asc())
-        )
-        async with self.engine.begin() as conn:
-            rows = (await conn.execute(stmt)).mappings()
-            return [dict(row) for row in rows]
 
     def _normalize_for_json(self, value: Any) -> Any:
         if value is None or isinstance(value, (str, int, float, bool)):
@@ -275,41 +197,5 @@ class StorageManager:
                 "CREATE INDEX IF NOT EXISTS idx_scraping_results_success ON scraping_results (success)"
             )
         )
-        await conn.execute(
-            text(
-                "CREATE TABLE IF NOT EXISTS agent_executions ("
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                "url VARCHAR(2048) NOT NULL, "
-                "goal VARCHAR(2048) NOT NULL, "
-                "created_at DATETIME NOT NULL, "
-                "success BOOLEAN NOT NULL DEFAULT 0, "
-                "cost_usd FLOAT NOT NULL DEFAULT 0, "
-                "payload JSON NOT NULL)"
-            )
-        )
-        await conn.execute(
-            text(
-                "CREATE TABLE IF NOT EXISTS agent_steps ("
-                "id INTEGER PRIMARY KEY AUTOINCREMENT, "
-                "execution_id INTEGER NOT NULL, "
-                "step_index INTEGER NOT NULL, "
-                "created_at DATETIME NOT NULL, "
-                "success BOOLEAN NOT NULL DEFAULT 0, "
-                "action JSON NOT NULL, "
-                "state_snapshot JSON NOT NULL, "
-                "error VARCHAR(2048))"
-            )
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_agent_executions_created_at ON agent_executions (created_at)")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_agent_executions_success ON agent_executions (success)")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_agent_steps_execution_id ON agent_steps (execution_id)")
-        )
-        await conn.execute(
-            text("CREATE INDEX IF NOT EXISTS idx_agent_steps_created_at ON agent_steps (created_at)")
-        )
+
 

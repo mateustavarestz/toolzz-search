@@ -47,6 +47,20 @@ def _coerce_guided_string_fields(data: dict[str, Any]) -> dict[str, Any]:
                     item_copy["title"] = str(item_copy["title"])
                 if "description" in item_copy and item_copy["description"] is not None and not isinstance(item_copy["description"], str):
                     item_copy["description"] = str(item_copy["description"])
+                
+                # Coercao de URL: se for string vazia ou invalida, setar None para passar na validacao HttpUrl
+                if "url" in item_copy and isinstance(item_copy["url"], str):
+                    val = item_copy["url"].strip()
+                    if not val or val.lower() in ("n/a", "none"):
+                        item_copy["url"] = None
+                    elif not val.startswith(("http://", "https://")):
+                        # Se nao comeca com http, tenta consertar ou anula
+                        if val.startswith("www."):
+                            item_copy["url"] = f"https://{val}"
+                        else:
+                            # URL relativa ou lixo -> anula para nao falhar validacao
+                            item_copy["url"] = None
+
                 extra = item_copy.get("extra")
                 if isinstance(extra, dict):
                     item_copy["extra"] = {str(k): (v if isinstance(v, (str, int, float, bool)) or v is None else str(v)) for k, v in extra.items()}

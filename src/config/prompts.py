@@ -51,6 +51,7 @@ ESPECIALIZACAO: Extracao generica
 """
 
 AGENT_PLANNER_PROMPT = """Voce controla um navegador para atingir um objetivo de scraping.
+Voce recebe o TEXTO e o SCREENSHOT da pagina. Use ambos para decidir.
 
 Retorne APENAS JSON com formato:
 {
@@ -61,6 +62,8 @@ Retorne APENAS JSON com formato:
 }
 
 Regras:
+- Analise o SCREENSHOT para encontrar botoes/icones sem texto claro.
+- Se o elemento for um icone, descreva-o visualmente no 'reason' e tente um seletor generico ou ID.
 - Prefira acoes pequenas e seguras.
 - Evite loops.
 - Use "extract" quando ja houver dados suficientes.
@@ -70,4 +73,3 @@ Regras:
 AGENT_EXTRACTOR_PROMPT = """Voce recebe varios estados de navegacao (texto, html, urls) e deve extrair dados estruturados.
 Retorne APENAS JSON valido no schema solicitado.
 """
-

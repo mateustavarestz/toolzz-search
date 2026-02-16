@@ -38,6 +38,7 @@ class ScraperOrchestrator:
         schema: type[BaseModel],
         system_prompt: str | None = None,
         extraction_goal: str | None = None,
+        output_format: str = "list",
         **browser_options: Any,
     ) -> dict[str, Any]:
         """Executa scraping completo em uma URL e persiste a tentativa."""
@@ -50,6 +51,7 @@ class ScraperOrchestrator:
                 schema=schema,
                 system_prompt=system_prompt,
                 extraction_goal=extraction_goal,
+                output_format=output_format,
                 **browser_options,
             )
         except Exception as exc:
@@ -90,6 +92,7 @@ class ScraperOrchestrator:
         schema: type[BaseModel],
         system_prompt: str | None = None,
         extraction_goal: str | None = None,
+        output_format: str = "list",
         **browser_options: Any,
     ) -> dict[str, Any]:
         start = time.perf_counter()
@@ -105,7 +108,7 @@ class ScraperOrchestrator:
 
         async with lock:
             async with BrowserManager() as browser:
-                screenshot_b64, html, text_content, page_metadata = await browser.navigate_and_capture(
+                screenshot_b64, html, text_content, ax_snapshot, image_urls, page_metadata = await browser.navigate_and_capture(
                     url=url,
                     **browser_options,
                 )
@@ -114,9 +117,12 @@ class ScraperOrchestrator:
                 screenshot_base64=screenshot_b64,
                 html=html,
                 text_content=text_content,
+                accessibility_snapshot=ax_snapshot,
+                image_urls=image_urls,
                 schema=schema,
                 system_prompt=system_prompt,
                 extraction_goal=extraction_goal,
+                output_format=output_format,
             )
         duration = time.perf_counter() - start
 

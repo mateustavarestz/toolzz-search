@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 type ScrapeResponse = Record<string, unknown>;
 type DataMap = Record<string, unknown>;
@@ -21,30 +22,20 @@ const PROMPT_TEMPLATES: Record<string, string> = {
 };
 
 export default function App() {
-  const [runMode, setRunMode] = useState<"playwright" | "selenium-agent">("playwright");
   const [url, setUrl] = useState("");
-  const [schema, setSchema] = useState("guided_extract");
-  const [prompt, setPrompt] = useState("generic");
   const [userPrompt, setUserPrompt] = useState(
     "Busque os dados mais relevantes desta pagina e retorne itens estruturados.",
   );
-  const [waitUntil, setWaitUntil] = useState("networkidle");
-  const [timeout, setTimeoutMs] = useState(30000);
-  const [quality, setQuality] = useState(70);
-  const [fullPage, setFullPage] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
-  const [scrollSteps, setScrollSteps] = useState(6);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<string>("");
   const [executionStage, setExecutionStage] = useState<string>("Pronto");
   const [result, setResult] = useState<ScrapeResponse | null>(null);
   const [history, setHistory] = useState<ScrapeResponse[]>([]);
   const [apiHealth, setApiHealth] = useState<"checking" | "ok" | "down">("checking");
-  const [template, setTemplate] = useState("custom");
+  const [outputFormat, setOutputFormat] = useState("list");
   const [historyStatus, setHistoryStatus] = useState<"all" | "success" | "error">("all");
   const [historyDomain, setHistoryDomain] = useState("");
-  const [agentMaxSteps, setAgentMaxSteps] = useState(8);
-  const [agentSteps, setAgentSteps] = useState<DataMap[]>([]);
+
 
   const prettyResult = useMemo(
     () => (result ? JSON.stringify(result, null, 2) : "{}"),
@@ -74,37 +65,27 @@ export default function App() {
     setResult(null);
 
     try {
-      const endpoint = runMode === "selenium-agent" ? "/api/scrape-agent" : "/api/scrape";
+      // Defaulting to standard scraping (Playwright) mostly
+      const endpoint = "/api/scrape";
       const response = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          runMode === "selenium-agent"
-            ? {
-                url: url.trim(),
-                goal: userPrompt,
-                schema,
-                max_steps: agentMaxSteps,
-                strategy: prompt,
-                headless: true,
-              }
-            : {
-                url: url.trim(),
-                schema,
-                prompt,
-                user_prompt: userPrompt,
-                wait_until: waitUntil,
-                timeout,
-                screenshot_quality: quality,
-                full_page: fullPage,
-                auto_scroll: autoScroll,
-                scroll_steps: scrollSteps,
-              },
-        ),
+        body: JSON.stringify({
+          url: url.trim(),
+          schema: "guided_extract",
+          prompt: "generic",
+          user_prompt: userPrompt,
+          wait_until: "networkidle",
+          timeout: 30000,
+          screenshot_quality: 70,
+          full_page: false,
+          auto_scroll: true,
+          scroll_steps: 6,
+          output_format: outputFormat,
+        }),
       });
       const data = (await response.json()) as ScrapeResponse;
       setResult(data);
-      setAgentSteps(Array.isArray(data.steps) ? (data.steps as DataMap[]) : []);
       const recordId = data.record_id as number | undefined;
       setStatus(recordId ? `Concluido. Registro salvo #${recordId}.` : "Concluido.");
       setExecutionStage("Concluido");
@@ -165,10 +146,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, [loading]);
 
-  useEffect(() => {
-    setUserPrompt(PROMPT_TEMPLATES[template] ?? PROMPT_TEMPLATES.custom);
-  }, [template]);
-
   return (
     <main className="page">
       <header className="hero">
@@ -182,24 +159,8 @@ export default function App() {
       <section className="card glass">
         <div className="sectionTitle">
           <h2>Novo scraping</h2>
-          <span className="pill">Modo recomendado: guiado por prompt</span>
         </div>
-        <div className="modeSwitch">
-          <button
-            className={runMode === "playwright" ? "primary" : "secondary"}
-            type="button"
-            onClick={() => setRunMode("playwright")}
-          >
-            Motor atual (Playwright)
-          </button>
-          <button
-            className={runMode === "selenium-agent" ? "primary" : "secondary"}
-            type="button"
-            onClick={() => setRunMode("selenium-agent")}
-          >
-            Agente Selenium (IA)
-          </button>
-        </div>
+
         <p className="stageText">
           Etapa atual: <strong>{executionStage}</strong>
         </p>
@@ -216,47 +177,13 @@ export default function App() {
           </div>
 
           <div>
-            <label>Schema</label>
-            <select value={schema} onChange={(e) => setSchema(e.target.value)}>
-              <option value="guided_extract">Guiado por prompt (recomendado)</option>
-              <option value="generic_list">Generico (lista)</option>
-              <option value="product_list">Produtos</option>
-              <option value="article">Artigo</option>
+            <label>Formato de Saída</label>
+            <select value={outputFormat} onChange={(e) => setOutputFormat(e.target.value)}>
+              <option value="list">Lista (Padrão)</option>
+              <option value="summary">Resumo</option>
+              <option value="report">Relatório Completo</option>
             </select>
           </div>
-
-          <div>
-            <label>Perfil de prompt</label>
-            <select value={prompt} onChange={(e) => setPrompt(e.target.value)}>
-              <option value="generic">Generico</option>
-              <option value="ecommerce">E-commerce</option>
-              <option value="news">Noticias</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Template de instrucao</label>
-            <select value={template} onChange={(e) => setTemplate(e.target.value)}>
-              <option value="products">Produtos</option>
-              <option value="article">Artigo</option>
-              <option value="contacts">Contatos</option>
-              <option value="offers">Ofertas</option>
-              <option value="custom">Customizado</option>
-            </select>
-          </div>
-
-          {runMode === "selenium-agent" ? (
-            <div>
-              <label>Max steps do agente</label>
-              <input
-                value={agentMaxSteps}
-                onChange={(e) => setAgentMaxSteps(Number(e.target.value))}
-                type="number"
-                min={1}
-                max={30}
-              />
-            </div>
-          ) : null}
 
           <div className="full">
             <label>Prompt da IA (o que buscar)</label>
@@ -267,74 +194,6 @@ export default function App() {
               rows={3}
             />
           </div>
-
-          {runMode === "playwright" ? (
-            <>
-              <div>
-                <label>wait_until</label>
-                <select value={waitUntil} onChange={(e) => setWaitUntil(e.target.value)}>
-                  <option value="networkidle">networkidle</option>
-                  <option value="load">load</option>
-                  <option value="domcontentloaded">domcontentloaded</option>
-                </select>
-              </div>
-
-              <div>
-                <label>timeout (ms)</label>
-                <input
-                  value={timeout}
-                  onChange={(e) => setTimeoutMs(Number(e.target.value))}
-                  type="number"
-                  min={5000}
-                  max={120000}
-                />
-              </div>
-
-              <div>
-                <label>qualidade screenshot</label>
-                <input
-                  value={quality}
-                  onChange={(e) => setQuality(Number(e.target.value))}
-                  type="number"
-                  min={30}
-                  max={100}
-                />
-              </div>
-
-              <div>
-                <label>captura full page</label>
-                <select
-                  value={String(fullPage)}
-                  onChange={(e) => setFullPage(e.target.value === "true")}
-                >
-                  <option value="false">Nao</option>
-                  <option value="true">Sim</option>
-                </select>
-              </div>
-
-              <div>
-                <label>auto scroll</label>
-                <select
-                  value={String(autoScroll)}
-                  onChange={(e) => setAutoScroll(e.target.value === "true")}
-                >
-                  <option value="true">Sim</option>
-                  <option value="false">Nao</option>
-                </select>
-              </div>
-
-              <div>
-                <label>passos de scroll</label>
-                <input
-                  value={scrollSteps}
-                  onChange={(e) => setScrollSteps(Number(e.target.value))}
-                  type="number"
-                  min={1}
-                  max={20}
-                />
-              </div>
-            </>
-          ) : null}
         </div>
 
         <div className="actions">
@@ -406,28 +265,12 @@ export default function App() {
               </div>
             ) : (
               <>
-                {agentSteps.length > 0 ? (
-                  <div className="timeline">
-                    <h3>Timeline do agente</h3>
-                    {agentSteps.map((step, idx) => (
-                      <article className="timelineItem" key={`step-${idx}`}>
-                        <strong>
-                          Step {String(step.step_index ?? idx + 1)} -{" "}
-                          {String((step.action as DataMap | undefined)?.action ?? "acao")}
-                        </strong>
-                        <span>{String(step.current_url ?? "")}</span>
-                        <span className={(step.success as boolean) ? "okText" : "errorText"}>
-                          {(step.success as boolean) ? "ok" : String(step.error ?? "erro")}
-                        </span>
-                      </article>
-                    ))}
+                <article className="summaryBox">
+                  <h3>Resumo da IA</h3>
+                  <div className="markdown-body">
+                    <ReactMarkdown>{resultSummary}</ReactMarkdown>
                   </div>
-                ) : null}
-                {resultSummary ? (
-                  <article className="summaryBox">
-                    <h3>Resumo da IA</h3>
-                    <p>{resultSummary}</p>
-                  </article>
+                </article>
                 ) : null}
                 {resultFindings.length > 0 ? (
                   <div className="findingList">
@@ -511,6 +354,17 @@ export default function App() {
                     {duration ? `${duration.toFixed(2)}s` : "-"} | ${cost ? cost.toFixed(4) : "0.0000"}
                   </span>
                   <span className="errorBadge">Erro: {errorType}</span>
+                  <button
+                    className="small"
+                    onClick={() => {
+                      setResult(payload as ScrapeResponse);
+                      setExecutionStage("Histórico Carregado");
+                      setStatus(`Visualizando registro #${item.id || "-"}`);
+                      window.scrollTo({ top: 0, behavior: "smooth" });
+                    }}
+                  >
+                    Visualizar
+                  </button>
                 </article>
               );
             })}

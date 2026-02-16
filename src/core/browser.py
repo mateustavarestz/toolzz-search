@@ -57,41 +57,128 @@ class BrowserManager:
         execute_js: str | None = None,
         auto_scroll: bool = True,
         scroll_steps: int = 6,
-    ) -> tuple[str, str, str, dict[str, Any]]:
-        """Navega para URL e retorna screenshot, html, texto e metadata."""
+        block_resources: bool = True,
+    ) -> tuple[str, str, str, str, list[str], dict[str, Any]]:
+        """Navega para URL e retorna screenshot, html, texto, accessibility, imagens e metadata."""
         if not self.browser:
             raise RuntimeError("Browser nao inicializado")
 
         timeout = timeout or settings.BROWSER_TIMEOUT
-        context = await self.browser.new_context(
-            viewport={"width": settings.VIEWPORT_WIDTH, "height": settings.VIEWPORT_HEIGHT},
-            locale="pt-BR",
-            timezone_id="America/Sao_Paulo",
-            user_agent=(
+        # Session Persistence Logic
+        from urllib.parse import urlparse
+        import os
+        
+        domain = urlparse(url).netloc.replace("www.", "")
+        session_dir = "data/sessions"
+        os.makedirs(session_dir, exist_ok=True)
+        session_path = f"{session_dir}/{domain}.json"
+        
+        context_args = {
+            "viewport": {"width": settings.VIEWPORT_WIDTH, "height": settings.VIEWPORT_HEIGHT},
+            "locale": "pt-BR",
+            "timezone_id": "America/Sao_Paulo",
+            "user_agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/133.0.0.0 Safari/537.36"
             ),
-            extra_http_headers={
+            "extra_http_headers": {
                 "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
                 "Upgrade-Insecure-Requests": "1",
                 "Sec-CH-UA-Platform": '"Windows"',
             },
-        )
+        }
+        
+        if os.path.exists(session_path):
+            logger.info(f"Carregando sessao existente para {domain}")
+            context_args["storage_state"] = session_path
+
+        context = await self.browser.new_context(**context_args)
         page = await context.new_page()
         await self._apply_stealth(page)
+        
+        if block_resources:
+            await self._block_resources(page)  # OPTIMIZATION: Bloqueio de recursos conditionally
 
         try:
-            response, resolved_wait_until = await self._goto_with_fallback(
-                page=page, url=url, preferred_wait_until=wait_until, timeout=timeout
-            )
+            try:
+                response, resolved_wait_until = await self._goto_with_fallback(
+                    page=page, url=url, preferred_wait_until=wait_until, timeout=timeout
+                )
+            except Exception as exc:
+                # Se falhar com ERR_ABORTED, pode ser um download (ex: PDF)
+                if "ERR_ABORTED" in str(exc) or "download" in str(exc):
+                    logger.info(f"Navegacao abortada ({exc}), tentando fetch manual...")
+                    response = await page.request.get(url)
+                    resolved_wait_until = "fetch_fallback"
+                else:
+                    raise exc
+
+            # Lógica Unificada de PDF
+            if response:
+                content_type = response.headers.get("content-type", "").lower()
+                if "application/pdf" in content_type or url.lower().endswith(".pdf"):
+                    logger.info("PDF detectado. Baixando e extraindo texto...")
+                    pdf_data = await response.body()
+                    
+                    import io
+                    from pypdf import PdfReader
+                    
+                    try:
+                        reader = PdfReader(io.BytesIO(pdf_data))
+                        text_list = []
+                        for page_num, pdf_page in enumerate(reader.pages):
+                            text_list.append(pdf_page.extract_text() or "")
+                        text_content = "\n".join(text_list)
+                        html = f"<html><body><h1>Conteudo PDF: {url}</h1><pre>{text_content[:2000]}...</pre></body></html>"
+                        screenshot_base64 = ""
+                        
+                        metadata = {
+                            "requested_url": url,
+                            "final_url": response.url,
+                            "status": response.status,
+                            "title": f"PDF: {url.split('/')[-1]}",
+                            "auto_scroll": False,
+                            "scroll_steps": 0,
+                            "wait_until_used": resolved_wait_until,
+                            "screenshot_mode": "pdf",
+                            "content_type": "application/pdf",
+                        }
+                        return screenshot_base64, html, text_content, "", [], metadata
+                    except Exception as exc:
+                        logger.error(f"Erro ao ler PDF: {exc}")
+                        if resolved_wait_until == "fetch_fallback":
+                             raise NetworkScraperError(f"Falha ao ler PDF baixado: {exc}")
+
+            # Se foi um fetch manual mas não era PDF (ou falhou leitura), e não temos page carregada...
+            if resolved_wait_until == "fetch_fallback":
+                 html = await response.text()
+                 text_content = html[:5000]
+                 metadata = {
+                     "requested_url": url,
+                     "final_url": response.url,
+                     "status": response.status,
+                     "title": "Fallback Fetch",
+                     "auto_scroll": False,
+                     "scroll_steps": 0,
+                     "wait_until_used": "fetch_fallback",
+                     "screenshot_mode": "none",
+                 }
+                 return "", html, text_content, "", [], metadata
 
             if auto_scroll:
-                await self._auto_scroll(page=page, steps=scroll_steps)
+                await self._smart_scroll(page=page, max_steps=scroll_steps)  # OPTIMIZATION: Smart Scroll
 
             if execute_js:
                 await page.evaluate(execute_js)
                 await asyncio.sleep(1)
+            
+            # Save session state logic
+            try:
+                await context.storage_state(path=session_path)
+                logger.info(f"Sessao salva para {domain}")
+            except Exception as e:
+                logger.warning(f"Nao foi possivel salvar sessao: {e}")
 
             screenshot_bytes, screenshot_mode = await self._capture_with_fallback(
                 page=page,
@@ -101,6 +188,27 @@ class BrowserManager:
             screenshot_base64 = base64.b64encode(screenshot_bytes).decode("utf-8")
 
             html = await page.content()
+            
+            # OPTIMIZATION: Accessibility Snapshot
+            try:
+                ax_tree = await page.accessibility.snapshot()
+                import json
+                accessibility_snapshot = json.dumps(ax_tree, ensure_ascii=False) if ax_tree else ""
+            except Exception:
+                accessibility_snapshot = ""
+
+            # OPTIMIZATION: Extract Image URLs (Hybrid Approach)
+            image_urls = await page.evaluate(
+                """
+                () => {
+                    return Array.from(document.querySelectorAll('img'))
+                        .map(img => img.src)
+                        .filter(src => src && src.startsWith('http') && !src.includes('base64'))
+                        .slice(0, 50); // Limit to 50 images
+                }
+                """
+            )
+
             text_content = await page.evaluate(
                 """
                 () => {
@@ -131,7 +239,8 @@ class BrowserManager:
                 "wait_until_used": resolved_wait_until,
                 "screenshot_mode": screenshot_mode,
             }
-            return screenshot_base64, html, text_content, metadata
+            return screenshot_base64, html, text_content, accessibility_snapshot, image_urls, metadata
+
         except PlaywrightTimeoutError as exc:
             raise NetworkScraperError(f"Timeout navegando em {url}: {exc}") from exc
         finally:
@@ -210,7 +319,7 @@ class BrowserManager:
             [html[:8_000].lower(), text_content[:4_000].lower(), (title or "").lower(), final_url.lower()]
         )
         blockers = [
-            r"\bcaptcha\b",
+            r"\\bcaptcha\\b",
             r"cloudflare",
             r"access denied",
             r"attention required",
@@ -226,12 +335,48 @@ class BrowserManager:
             return f"Status HTTP indica bloqueio/protecao: {status_code}"
         return None
 
-    async def _auto_scroll(self, page: Any, steps: int = 6) -> None:
-        """Faz scroll incremental para carregar lazy-loading."""
-        safe_steps = max(1, min(steps, 20))
-        for _ in range(safe_steps):
-            await page.evaluate("window.scrollBy(0, Math.floor(window.innerHeight * 0.9));")
-            await asyncio.sleep(0.35)
+    async def _block_resources(self, page: Page) -> None:
+        """Bloqueia recursos desnecessarios para economizar banda e tempo."""
+        blocked_types = {"image", "font", "media", "stylesheet"}  # Stylesheet opcional, as vezes quebra layout visual
+        # Para visao computacional, TALVEZ precisemos de imagens/css. 
+        # Mas para velocidade, bloquear é melhor. 
+        # Vamos bloquear imagens e fontes por enquanto.
+        
+        async def route_handler(route: Any) -> None:
+            if route.request.resource_type in {"image", "media", "font"}:
+                await route.abort()
+            else:
+                await route.continue_()
+
+        await page.route("**/*", route_handler)
+
+    async def _smart_scroll(self, page: Page, max_steps: int = 20) -> None:
+        """Scroll inteligente que detecta carregamento de conteudo."""
+        logger.info("Iniciando Smart Scroll...")
+        last_height = await page.evaluate("document.body.scrollHeight")
+        
+        for i in range(max_steps):
+            await page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
+            
+            # Aguarda rede acalmar ou timeout curto
+            try:
+                await page.wait_for_load_state("networkidle", timeout=1500)
+            except PlaywrightTimeoutError:
+                pass # Rede ocupada, mas seguimos
+            
+            await asyncio.sleep(0.5) # Pequena pausa para JS reagir
+            
+            new_height = await page.evaluate("document.body.scrollHeight")
+            if new_height == last_height:
+                # Tenta mais uma vez com espera maior para garantir
+                await asyncio.sleep(1.0)
+                new_height = await page.evaluate("document.body.scrollHeight")
+                if new_height == last_height:
+                    logger.info(f"Smart Scroll finalizado no passo {i+1} (fim da pagina).")
+                    break
+            
+            last_height = new_height
+            
         await page.evaluate("window.scrollTo(0, 0);")
 
     async def close(self) -> None:
@@ -243,4 +388,3 @@ class BrowserManager:
             await self.playwright.stop()
             self.playwright = None
         logger.info("Browser fechado")
-
