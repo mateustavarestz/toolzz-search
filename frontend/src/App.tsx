@@ -12,14 +12,12 @@ const EXECUTION_STAGES = [
   "Processando com IA",
   "Validando e persistindo",
 ];
-const PROMPT_TEMPLATES: Record<string, string> = {
-  products: "Liste os 10 principais produtos com nome, preco, disponibilidade e URL.",
-  article:
-    "Extraia titulo, autor, data e os principais pontos do conteudo em itens objetivos.",
-  contacts: "Extraia contatos visiveis (email, telefone, formulario, redes sociais) com links.",
-  offers: "Capture ofertas em destaque com titulo, preco, desconto e validade quando existir.",
-  custom: "Busque os dados mais relevantes desta pagina e retorne itens estruturados.",
-};
+const MODEL_OPTIONS = [
+  "gpt-5-mini-2025-08-07",
+  "gpt-5",
+  "gpt-4.1-mini",
+  "o4-mini",
+];
 
 export default function App() {
   const [url, setUrl] = useState("");
@@ -35,12 +33,17 @@ export default function App() {
   const [outputFormat, setOutputFormat] = useState("list");
   const [historyStatus, setHistoryStatus] = useState<"all" | "success" | "error">("all");
   const [historyDomain, setHistoryDomain] = useState("");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  const [openaiModelPreset, setOpenaiModelPreset] = useState(MODEL_OPTIONS[0]);
+  const [openaiModelCustom, setOpenaiModelCustom] = useState("");
 
 
   const prettyResult = useMemo(
     () => (result ? JSON.stringify(result, null, 2) : "{}"),
     [result],
   );
+  const selectedModel =
+    openaiModelPreset === "custom" ? openaiModelCustom.trim() : openaiModelPreset;
   const resultSuccess = result?.success === true;
   const resultMeta = (result?.metadata as DataMap | undefined) ?? {};
   const resultData = (result?.data as DataMap | undefined) ?? {};
@@ -56,6 +59,10 @@ export default function App() {
   async function runScrape() {
     if (!url.trim()) {
       setStatus("Informe uma URL.");
+      return;
+    }
+    if (!selectedModel) {
+      setStatus("Escolha um modelo da OpenAI.");
       return;
     }
 
@@ -82,12 +89,27 @@ export default function App() {
           auto_scroll: true,
           scroll_steps: 6,
           output_format: outputFormat,
+          openai_api_key: openaiApiKey.trim() || undefined,
+          openai_model: selectedModel,
         }),
       });
-      const data = (await response.json()) as ScrapeResponse;
+      const responseText = await response.text();
+      let data: ScrapeResponse;
+      try {
+        data = JSON.parse(responseText) as ScrapeResponse;
+      } catch {
+        data = {
+          success: false,
+          error: `API retornou resposta invalida (${response.status}): ${responseText.slice(0, 240)}`,
+        };
+      }
       setResult(data);
       const recordId = data.record_id as number | undefined;
-      setStatus(recordId ? `Concluido. Registro salvo #${recordId}.` : "Concluido.");
+      if (data.success === true) {
+        setStatus(recordId ? `Concluido. Registro salvo #${recordId}.` : "Concluido.");
+      } else {
+        setStatus("Falha retornada pela API.");
+      }
       setExecutionStage("Concluido");
       await loadHistory();
     } catch (error) {
@@ -110,7 +132,12 @@ export default function App() {
       if (historyStatus === "error") params.set("success", "false");
       if (historyDomain.trim()) params.set("domain", historyDomain.trim());
       const response = await fetch(`${API_BASE}/api/history?${params.toString()}`);
-      const data = (await response.json()) as { items?: ScrapeResponse[] };
+      const data = (await response.json()) as { success?: boolean; items?: ScrapeResponse[] };
+      if (data.success === false) {
+        setHistory([]);
+        setStatus("API retornou erro ao carregar historico.");
+        return;
+      }
       setHistory(data.items ?? []);
     } catch (_error) {
       setStatus("Nao foi possivel carregar historico.");
@@ -183,6 +210,38 @@ export default function App() {
               <option value="summary">Resumo</option>
               <option value="report">Relatório Completo</option>
             </select>
+          </div>
+          <div>
+            <label>Modelo OpenAI</label>
+            <select value={openaiModelPreset} onChange={(e) => setOpenaiModelPreset(e.target.value)}>
+              {MODEL_OPTIONS.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+              <option value="custom">Outro (manual)</option>
+            </select>
+          </div>
+          {openaiModelPreset === "custom" ? (
+            <div className="full">
+              <label>Modelo personalizado</label>
+              <input
+                value={openaiModelCustom}
+                onChange={(e) => setOpenaiModelCustom(e.target.value)}
+                placeholder="Ex.: gpt-5-mini"
+                type="text"
+              />
+            </div>
+          ) : null}
+          <div className="full">
+            <label>Chave da OpenAI (sobrescreve .env apenas nesta requisicao)</label>
+            <input
+              value={openaiApiKey}
+              onChange={(e) => setOpenaiApiKey(e.target.value)}
+              placeholder="sk-..."
+              type="password"
+              autoComplete="off"
+            />
           </div>
 
           <div className="full">
@@ -271,7 +330,6 @@ export default function App() {
                     <ReactMarkdown>{resultSummary}</ReactMarkdown>
                   </div>
                 </article>
-                ) : null}
                 {resultFindings.length > 0 ? (
                   <div className="findingList">
                     {resultFindings.map((item, idx) => {

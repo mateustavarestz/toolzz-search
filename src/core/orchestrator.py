@@ -39,6 +39,8 @@ class ScraperOrchestrator:
         system_prompt: str | None = None,
         extraction_goal: str | None = None,
         output_format: str = "list",
+        openai_api_key: str | None = None,
+        openai_model: str | None = None,
         **browser_options: Any,
     ) -> dict[str, Any]:
         """Executa scraping completo em uma URL e persiste a tentativa."""
@@ -52,6 +54,8 @@ class ScraperOrchestrator:
                 system_prompt=system_prompt,
                 extraction_goal=extraction_goal,
                 output_format=output_format,
+                openai_api_key=openai_api_key,
+                openai_model=openai_model,
                 **browser_options,
             )
         except Exception as exc:
@@ -93,6 +97,8 @@ class ScraperOrchestrator:
         system_prompt: str | None = None,
         extraction_goal: str | None = None,
         output_format: str = "list",
+        openai_api_key: str | None = None,
+        openai_model: str | None = None,
         **browser_options: Any,
     ) -> dict[str, Any]:
         start = time.perf_counter()
@@ -123,6 +129,8 @@ class ScraperOrchestrator:
                 system_prompt=system_prompt,
                 extraction_goal=extraction_goal,
                 output_format=output_format,
+                openai_api_key=openai_api_key,
+                openai_model=openai_model,
             )
         duration = time.perf_counter() - start
 

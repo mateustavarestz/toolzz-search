@@ -1,7 +1,9 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
 :root {
-  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  color: #101828;
-  background: radial-gradient(1200px 600px at 20% -10%, #e0e7ff 0%, #f5f7fb 48%, #eef2f7 100%);
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  background: #141414;
+  color: #f5f7ff;
 }
 
 * {
@@ -11,6 +13,24 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: #141414;
+  color: #f5f7ff;
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3,
+p,
+label,
+input,
+select,
+textarea,
+button,
+span,
+summary {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .page {
@@ -20,16 +40,15 @@ body {
 }
 
 .card {
-  border-radius: 20px;
+  border-radius: 16px;
   padding: 18px;
   margin-bottom: 14px;
 }
 
 .glass {
-  background: rgba(255, 255, 255, 0.76);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  background: #1b1b1b;
+  border: 1px solid #262626;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
 }
 
 .hero {
@@ -38,24 +57,27 @@ body {
 
 .hero h1 {
   margin: 0;
-  font-size: 2rem;
-  letter-spacing: -0.02em;
+  font-size: 3rem;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #f8f9ff;
 }
 
 .hero p {
   margin: 6px 0 0;
-  color: #475467;
+  color: #b9bfd1;
+  font-size: 1rem;
 }
 
 .apiStatus {
   margin-top: 10px;
   display: inline-block;
-  font-size: 0.82rem;
+  font-size: 0.875rem;
   border-radius: 999px;
   padding: 5px 10px;
-  border: 1px solid #d0d5dd;
-  background: #f9f9f9;
-  color: #333;
+  border: 1px solid #30364a;
+  background: #1e2433;
+  color: #c7d7ff;
 }
 
 .engineInfo {
@@ -88,15 +110,15 @@ body {
 }
 
 .apiStatus.ok {
-  color: #067647;
-  border-color: #a6f4c5;
-  background: #ecfdf3;
+  color: #8ed9ad;
+  border-color: #2d6944;
+  background: #18291f;
 }
 
 .apiStatus.down {
-  color: #b42318;
-  border-color: #fecdca;
-  background: #fef3f2;
+  color: #ffb3b3;
+  border-color: #6b2f36;
+  background: #2a181c;
 }
 
 .sectionTitle {
@@ -112,29 +134,46 @@ body {
 }
 
 .pill {
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   border-radius: 999px;
   padding: 6px 10px;
-  background: #eff4ff;
-  color: #1d4ed8;
-  border: 1px solid #dbe7ff;
+  background: #18317a;
+  color: #dce6ff;
+  border: 1px solid #2f4ea8;
 }
 
 h1,
 h2 {
   margin: 0 0 10px;
-  color: #111827;
+  color: #f8f9ff;
+}
+
+h1 {
+  font-size: 3rem;
+  line-height: 1.1;
+}
+
+h2 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+}
+
+h3 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin: 0;
 }
 
 .hint {
   margin: 0 0 12px;
-  color: #667085;
+  color: #9ba3ba;
+  font-size: 0.875rem;
 }
 
 .stageText {
   margin: 0 0 12px;
-  color: #475467;
-  font-size: 0.9rem;
+  color: #b9bfd1;
+  font-size: 0.875rem;
 }
 
 .resultPanel {
@@ -156,8 +195,8 @@ h2 {
 }
 
 .kpiCard {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid #e4e7ec;
+  background: #202020;
+  border: 1px solid #2f2f2f;
   border-radius: 12px;
   padding: 10px 12px;
   display: grid;
@@ -165,38 +204,40 @@ h2 {
 }
 
 .kpiCard span {
-  font-size: 0.78rem;
-  color: #667085;
+  font-size: 0.875rem;
+  color: #9ba3ba;
 }
 
 .kpiCard strong {
-  font-size: 1.02rem;
-  color: #111827;
+  font-size: 1rem;
+  color: #f8f9ff;
 }
 
 .okText {
-  color: #067647 !important;
+  color: #89d4aa !important;
 }
 
 .errorText {
-  color: #b42318 !important;
+  color: #ff9b9b !important;
 }
 
 .summaryBox {
-  border: 1px solid #dbe7ff;
-  background: #eff4ff;
+  border: 1px solid #2b4eb6;
+  background: #18223f;
   border-radius: 12px;
   padding: 12px;
 }
 
 .summaryBox h3 {
   margin: 0 0 6px;
-  font-size: 0.95rem;
+  font-size: 1.5rem;
+  color: #f0f4ff;
 }
 
 .summaryBox p {
   margin: 0;
-  color: #1f2937;
+  color: #e0e6f7;
+  font-size: 1rem;
 }
 
 .findingList {
@@ -205,8 +246,8 @@ h2 {
 }
 
 .findingCard {
-  border: 1px solid #e4e7ec;
-  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid #2f2f2f;
+  background: #1f1f1f;
   border-radius: 12px;
   padding: 12px;
   display: grid;
@@ -215,19 +256,20 @@ h2 {
 
 .findingCard h3 {
   margin: 0;
-  font-size: 0.97rem;
+  font-size: 1.5rem;
+  color: #f8f9ff;
 }
 
 .findingCard p {
   margin: 0;
-  color: #344054;
-  font-size: 0.9rem;
+  color: #d4d9e8;
+  font-size: 1rem;
 }
 
 .findingCard a {
-  color: #175cd3;
+  color: #78a0ff;
   text-decoration: none;
-  font-size: 0.85rem;
+  font-size: 0.875rem;
 }
 
 .findingCard a:hover {
@@ -267,40 +309,41 @@ h2 {
 }
 
 .chip {
-  font-size: 0.74rem;
-  border: 1px solid #d0d5dd;
-  background: #f8fafc;
+  font-size: 0.875rem;
+  border: 1px solid #2f4ea8;
+  background: #1c2547;
   border-radius: 999px;
   padding: 4px 8px;
-  color: #344054;
+  color: #d8e4ff;
 }
 
 .errorPanel {
-  border: 1px solid #fecdca;
-  background: #fef3f2;
+  border: 1px solid #6b2f36;
+  background: #2a181c;
   border-radius: 12px;
   padding: 12px;
 }
 
 .errorPanel h3 {
   margin: 0 0 6px;
-  color: #912018;
+  color: #ffd1d1;
 }
 
 .errorPanel p {
   margin: 0 0 6px;
-  color: #7a271a;
+  color: #ffc0c0;
+  font-size: 1rem;
 }
 
 .jsonBox {
-  border-top: 1px dashed #d0d5dd;
+  border-top: 1px dashed #2f2f2f;
   padding-top: 8px;
 }
 
 .jsonBox summary {
   cursor: pointer;
-  color: #344054;
-  font-size: 0.86rem;
+  color: #b9bfd1;
+  font-size: 0.875rem;
   margin-bottom: 6px;
 }
 
@@ -315,8 +358,8 @@ h2 {
 }
 
 label {
-  font-size: 0.84rem;
-  color: #475467;
+  font-size: 0.875rem;
+  color: #c2c8da;
   font-weight: 600;
   display: block;
   margin-bottom: 6px;
@@ -326,20 +369,21 @@ input,
 select,
 textarea {
   width: 100%;
-  border: 1px solid #d0d5dd;
+  border: 1px solid #2f2f2f;
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.88);
-  color: #111827;
+  background: #111111;
+  color: #f5f7ff;
   padding: 10px 12px;
   outline: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;
+  font-size: 1rem;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #6d9fff;
-  box-shadow: 0 0 0 4px rgba(109, 159, 255, 0.16);
+  border-color: #1e5cff;
+  box-shadow: 0 0 0 3px rgba(30, 92, 255, 0.28);
 }
 
 textarea {
@@ -359,6 +403,7 @@ button {
   border-radius: 999px;
   padding: 10px 16px;
   font-weight: 600;
+  font-size: 0.875rem;
   cursor: pointer;
   border: 1px solid transparent;
   transition: transform 80ms ease, filter 120ms ease;
@@ -373,14 +418,15 @@ button:active {
 }
 
 .primary {
-  background: linear-gradient(180deg, #0a84ff, #0066d6);
+  background: #1e5cff;
   color: #fff;
+  border-color: #1e5cff;
 }
 
 .secondary {
-  background: #fff;
-  color: #111827;
-  border-color: #d0d5dd;
+  background: #191f33;
+  color: #dbe4ff;
+  border-color: #2f4ea8;
 }
 
 button:disabled {
@@ -391,14 +437,14 @@ button:disabled {
 pre {
   white-space: pre-wrap;
   word-break: break-word;
-  background: #0f172a;
+  background: #0f1117;
   color: #d1e5ff;
-  border: 1px solid #1f2937;
+  border: 1px solid #222739;
   border-radius: 14px;
   padding: 12px;
   min-height: 180px;
   margin: 0;
-  font-size: 0.83rem;
+  font-size: 0.875rem;
   line-height: 1.35;
 }
 
@@ -416,20 +462,21 @@ pre {
 
 .historyItem {
   border-radius: 12px;
-  border: 1px solid #e4e7ec;
-  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid #2f2f2f;
+  background: #1f1f1f;
   padding: 10px 12px;
   display: grid;
   gap: 2px;
 }
 
 .historyItem strong {
-  font-size: 0.9rem;
+  font-size: 1rem;
+  color: #f8f9ff;
 }
 
 .historyItem span {
-  font-size: 0.82rem;
-  color: #344054;
+  font-size: 0.875rem;
+  color: #c2c8da;
 }
 
 .errorBadge {
@@ -437,8 +484,19 @@ pre {
   width: fit-content;
   border-radius: 999px;
   padding: 4px 8px;
-  font-size: 0.75rem;
-  color: #7a271a;
-  background: #fef3f2;
-  border: 1px solid #fecdca;
+  font-size: 0.875rem;
+  color: #ffc0c0;
+  background: #2a181c;
+  border: 1px solid #6b2f36;
+}
+
+button svg,
+.icon {
+  color: #1e5cff;
+}
+
+small,
+.small {
+  font-size: 0.875rem;
+  line-height: 1.4;
 }

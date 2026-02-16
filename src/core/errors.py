@@ -29,6 +29,10 @@ class ModelScraperError(RecoverableScraperError):
     """Falha em chamada de modelo/fornecedor LLM."""
 
 
+class ModelAuthScraperError(NonRecoverableScraperError):
+    """Falha de autenticacao/credencial no provedor de modelo."""
+
+
 class NetworkScraperError(RecoverableScraperError):
     """Falha de rede/navegacao."""
 
@@ -41,6 +45,8 @@ def classify_exception(error: Exception) -> tuple[str, bool]:
         return "blocked", True
     if isinstance(error, ModelScraperError):
         return "model", True
+    if isinstance(error, ModelAuthScraperError):
+        return "model_auth", False
     if isinstance(error, NetworkScraperError):
         return "network", True
     if isinstance(error, PlaywrightTimeoutError):
