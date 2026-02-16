@@ -10,26 +10,8 @@ import toast from "react-hot-toast";
 import { Terminal, Rocket, AlertTriangle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Regex patterns for supported library URLs
-const LIBRARY_URL_PATTERNS: { pattern: RegExp; name: string; libraryId: string }[] = [
-    { pattern: /google\.\w+\/maps/i, name: "Google Maps", libraryId: "google_maps" },
-    { pattern: /maps\.google\.\w+/i, name: "Google Maps", libraryId: "google_maps" },
-    { pattern: /google\.\w+\/maps\/search/i, name: "Google Maps", libraryId: "google_maps" },
-];
-
 // URL validation regex
 const URL_REGEX = /^https?:\/\/([\w-]+\.)+[\w-]+(\/[\w\-._~:/?#[\]@!$&'()*+,;=%]*)?$/i;
-
-function detectLibraryUrl(inputUrl: string): { name: string; libraryId: string } | null {
-    if (!inputUrl.trim()) return null;
-    for (const { pattern, name, libraryId } of LIBRARY_URL_PATTERNS) {
-        if (pattern.test(inputUrl)) {
-            return { name, libraryId };
-        }
-    }
-    return null;
-}
-
 
 export default function Scraper() {
     const [url, setUrl] = useState("");
@@ -46,7 +28,6 @@ export default function Scraper() {
     const [source, setSource] = useState("scraper_manual");
     const [logs, setLogs] = useState<string[]>([]);
     const logsEndRef = useRef<HTMLDivElement>(null);
-    const [libraryMatch, setLibraryMatch] = useState<{ name: string; libraryId: string } | null>(null);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -72,25 +53,16 @@ export default function Scraper() {
 
 
     useEffect(() => {
-        if (!url) {
-            setLibraryMatch(null);
-            return;
-        }
+        if (!url) return;
         const lowerUrl = url.toLowerCase();
 
-        // Check if URL matches a library tool
-        const match = detectLibraryUrl(url);
-        setLibraryMatch(match);
-
-        // Auto-detect site type for prompt selection (only if not from library)
-        if (!match) {
-            if (lowerUrl.includes("amazon") || lowerUrl.includes("mercadolivre") || lowerUrl.includes("shop") || lowerUrl.includes("store")) {
-                setSystemPrompt("ecommerce");
-                toast("Modo E-commerce ativado", { icon: '🛍️', duration: 2000 });
-            } else if (lowerUrl.includes("news") || lowerUrl.includes("g1") || lowerUrl.includes("cnn") || lowerUrl.includes("bbc")) {
-                setSystemPrompt("news");
-                toast("Modo Notícias ativado", { icon: '📰', duration: 2000 });
-            }
+        // Auto-detect site type for prompt selection
+        if (lowerUrl.includes("amazon") || lowerUrl.includes("mercadolivre") || lowerUrl.includes("shop") || lowerUrl.includes("store")) {
+            setSystemPrompt("ecommerce");
+            toast("Modo E-commerce ativado", { icon: '🛍️', duration: 2000 });
+        } else if (lowerUrl.includes("news") || lowerUrl.includes("g1") || lowerUrl.includes("cnn") || lowerUrl.includes("bbc")) {
+            setSystemPrompt("news");
+            toast("Modo Notícias ativado", { icon: '📰', duration: 2000 });
         }
     }, [url]);
 
@@ -152,13 +124,6 @@ export default function Scraper() {
         // URL format validation
         if (!URL_REGEX.test(targetUrl.trim())) {
             toast.error("URL inválida. Use o formato: https://example.com");
-            return;
-        }
-
-        // Block library URLs from manual scraping
-        const libMatch = detectLibraryUrl(targetUrl);
-        if (libMatch) {
-            toast.error(`Use a Biblioteca para ${libMatch.name} — temos suporte personalizado!`);
             return;
         }
 
@@ -256,46 +221,7 @@ export default function Scraper() {
                             onChange={(e) => setUrl(e.target.value)}
                             placeholder="https://example.com"
                             type="url"
-                            error={libraryMatch ? `URL de ${libraryMatch.name} detectada` : undefined}
                         />
-                        <AnimatePresence>
-                            {libraryMatch && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                                    animate={{ opacity: 1, height: 'auto', marginTop: 12 }}
-                                    exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                                    style={{
-                                        background: 'var(--bg-muted)',
-                                        border: '1px solid var(--border-subtle)',
-                                        borderRadius: 'var(--radius-md)',
-                                        padding: 'var(--space-4)',
-                                        display: 'flex',
-                                        alignItems: 'flex-start',
-                                        gap: 'var(--space-3)',
-                                        overflow: 'hidden'
-                                    }}
-                                >
-                                    <AlertTriangle size={20} style={{ color: 'var(--status-warning)', flexShrink: 0, marginTop: 2 }} />
-                                    <div>
-                                        <strong style={{ display: 'block', color: 'var(--text-primary)', marginBottom: 'var(--space-1)' }}>
-                                            Use a Biblioteca para {libraryMatch.name}
-                                        </strong>
-                                        <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-sm)' }}>
-                                            Temos um extrator otimizado para este site na Biblioteca com suporte a todos os campos (telefone, site, etc).
-                                        </p>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            onClick={() => navigate("/library")}
-                                            style={{ marginTop: 'var(--space-3)' }}
-                                            type="button"
-                                        >
-                                            Ir para Biblioteca
-                                        </Button>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
                     </div>
 
                     <div>
@@ -329,7 +255,7 @@ export default function Scraper() {
                         variant="primary"
                         size="lg"
                         onClick={() => runScrape()}
-                        disabled={loading || !!libraryMatch}
+                        disabled={loading}
                         loading={loading}
                     >
                         {loading ? "Processando..." : (
@@ -346,7 +272,7 @@ export default function Scraper() {
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="terminal-panel"
+                            className="terminal-panel animate-pulse-border"
                             role="log"
                             aria-label="Terminal de execução"
                             aria-live="polite"

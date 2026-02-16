@@ -58,6 +58,7 @@ class BrowserManager:
         auto_scroll: bool = True,
         scroll_steps: int = 6,
         block_resources: bool = True,
+        source: str | None = None, # New parameter
     ) -> tuple[str, str, str, str, list[str], dict[str, Any]]:
         """Navega para URL e retorna screenshot, html, texto, accessibility, imagens e metadata."""
         if not self.browser:
@@ -167,7 +168,12 @@ class BrowserManager:
                  return "", html, text_content, "", [], metadata
 
             if auto_scroll:
-                await self._smart_scroll(page=page, max_steps=scroll_steps)  # OPTIMIZATION: Smart Scroll
+                if source == "library:google_maps":
+                     # Usa a nova logica de enriquecimento (Click & Connect)
+                     # Limitamos a 10 itens para performance por padrao, ou passamos scroll_steps
+                     await self._enrich_google_maps_list(page=page, max_items=10) # Hardcoded limit for safety/performance
+                else:
+                    await self._smart_scroll(page=page, max_steps=scroll_steps)  # OPTIMIZATION: Smart Scroll
 
             if execute_js:
                 await page.evaluate(execute_js)
@@ -349,6 +355,149 @@ class BrowserManager:
                 await route.continue_()
 
         await page.route("**/*", route_handler)
+
+    async def _enrich_google_maps_list(self, page: Page, max_items: int = 10) -> None:
+        """
+        Scrolla a lista do Google Maps, clica nos itens para obter detalhes (Telefone, Site)
+        e injeta esses dados de volta no item da lista para o LLM ler.
+        """
+        logger.info(f"Iniciando Enriquecimento do Google Maps (Click & Collect) - Top {max_items}...")
+        
+        # Seletor da Sidebar (Feed)
+        sidebar_selector = "div[role='feed']"
+        
+        try:
+            await page.wait_for_selector(sidebar_selector, timeout=5000)
+        except PlaywrightTimeoutError:
+            logger.warning("Google Maps Sidebar nao encontrada (div[role='feed']). Tentando scroll generico.")
+            await self._smart_scroll(page, 10)
+            return
+
+        # 1. Scroll inicial para carregar batch de itens
+        logger.info("Carregando itens iniciais...")
+        # 1. Scroll inicial para carregar batch de itens
+        logger.info("Carregando itens iniciais...")
+        for _ in range(3):
+            # Scrolla o elemento especifico usando argumentos para evitar erro de aspas
+            await page.evaluate(
+                "(selector) => { const el = document.querySelector(selector); if(el) el.scrollTop = el.scrollHeight; }", 
+                sidebar_selector
+            )
+            await asyncio.sleep(1)
+
+        # 2. Iterar e Enriquecer
+        # Seleciona todos os artigos (itens da lista)
+        # Nota: O seletor pode precisar de ajuste fino se o Maps mudar, mas div[role='article'] eh padrao.
+        # Usamos locator.all() para pegar handles, mas cuidado com Stale Elements.
+        # Melhor usar nth index para resilencia ao ir e voltar.
+        
+        # Contamos quantos temos agora (mas limitamos ao max_items)
+        count = await page.locator(f"{sidebar_selector} > div[role='article']").count()
+        limit = min(count, max_items)
+        logger.info(f"Encontrados {count} itens. Enriquecendo os top {limit}...")
+
+        for i in range(limit):
+            try:
+                # Re-seleciona item pelo indice (para evitar StaleElement se o DOM mudou)
+                item_locator = page.locator(f"{sidebar_selector} > div[role='article']").nth(i)
+                
+                # Garante visibilidade
+                if not await item_locator.is_visible():
+                    await item_locator.scroll_into_view_if_needed()
+                
+                # Clica no item
+                logger.info(f"Clicando no item {i+1}/{limit}...")
+                await item_locator.click()
+                
+                # Espera painel de detalhes (role='main')
+                # As vezes o Maps apenas abre um painel lateral maior, as vezes substitui.
+                try:
+                    await page.wait_for_selector("div[role='main']", timeout=4000)
+                except PlaywrightTimeoutError:
+                    logger.warning(f"Painel de detalhes nao abriu para item {i}. Tentando proximo.")
+                    continue
+                
+                # Extrai dados do Painel de Detalhes via Python (Mais seguro que JS injection)
+                try:
+                    data = {"website": None, "phone": None, "address": None}
+                    
+                    # Website
+                    website_loc = page.locator('a[data-item-id="authority"]')
+                    if await website_loc.count() > 0 and await website_loc.is_visible():
+                        data["website"] = await website_loc.get_attribute("href")
+
+                    # Telefone (startswith phone)
+                    phone_loc = page.locator('button[data-item-id^="phone"]')
+                    if await phone_loc.count() > 0:
+                        # Tenta aria-label primeiro, depois text
+                        padding = await phone_loc.first.get_attribute("aria-label")
+                        if not padding:
+                            padding = await phone_loc.first.inner_text()
+                        data["phone"] = padding
+
+                    # Endereco
+                    address_loc = page.locator('button[data-item-id="address"]')
+                    if await address_loc.count() > 0:
+                        padding = await address_loc.first.get_attribute("aria-label")
+                        if not padding:
+                            padding = await address_loc.first.inner_text()
+                        data["address"] = padding
+
+                    # Se nao achou nada, retorna null (nao injeta)
+                    has_data = any(v is not None for v in data.values())
+                    if not has_data:
+                        enriched_html = None
+                    else:
+                        # Limpa dados
+                        def clean(t):
+                             return t.replace("\n", " ").strip() if t else "N/A"
+
+                        website = data["website"] or "N/A"
+                        phone = clean(data["phone"])
+                        address = clean(data["address"])
+
+                        enriched_html = (
+                            f'<div class="toolzz-enriched-info" style="border: 2px solid #2AB17C; background: #e0ffee; color: #000; padding: 8px; margin-top: 5px; font-weight: bold; font-size: 13px; z-index: 9999;">'
+                            f'[DADOS ENRIQUECIDOS]: '
+                            f'WEBSITE: {website} '
+                            f'TELEFONE: {phone} '
+                            f'ENDERECO: {address}'
+                            f'</div>'
+                        )
+                except Exception as e:
+                    logger.warning(f"Erro na extracao Python do item {i}: {e}")
+                    enriched_html = None
+                
+                # Volta para a lista
+                # Procura botao voltar comum
+                back_btn = page.locator("button[aria-label='Voltar'], button[aria-label='Back']")
+                if await back_btn.count() > 0 and await back_btn.is_visible():
+                    await back_btn.click()
+                    # Espera lista reaparecer
+                    await page.wait_for_selector(sidebar_selector, timeout=3000)
+                
+                # Injeta dados no item da lista
+                if enriched_html:
+                    # Precisa re-selecionar o item na lista pois o DOM pode ter sido recriado
+                    item_locator_again = page.locator(f"{sidebar_selector} > div[role='article']").nth(i)
+                    if await item_locator_again.is_visible():
+                        await item_locator_again.evaluate(f"(el, html) => el.insertAdjacentHTML('beforeend', html)", enriched_html)
+                        logger.info(f"Dados injetados no item {i+1}")
+                
+                await asyncio.sleep(0.5) # Throttle
+
+            except Exception as e:
+                logger.error(f"Erro ao enriquecer item {i}: {e}")
+                # Tenta recuperar estado (clicar em voltar se estiver preso no detalhe)
+                try:
+                    back_btn = page.locator("button[aria-label='Voltar'], button[aria-label='Back']")
+                    if await back_btn.is_visible():
+                         await back_btn.click()
+                         await asyncio.sleep(1)
+                except:
+                   pass
+
+        logger.info("Enriquecimento finalizado.")
 
     async def _smart_scroll(self, page: Page, max_steps: int = 20) -> None:
         """Scroll inteligente que detecta carregamento de conteudo."""

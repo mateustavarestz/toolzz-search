@@ -96,7 +96,7 @@ Se um campo não estiver visível, use null. NÃO invente dados.`;
             transition={{ duration: 0.4 }}
         >
             <div className="page-header">
-                <h1>Biblioteca de Extratores</h1>
+                <h1>Templates de Extratores</h1>
                 <p>
                     Escolha um extrator especializado para iniciar sua coleta de dados.
                     Nossas ferramentas já vêm configuradas com as melhores estratégias.

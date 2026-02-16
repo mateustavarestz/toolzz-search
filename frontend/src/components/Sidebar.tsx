@@ -21,7 +21,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
     const navItems = [
         { to: "/", icon: <LayoutDashboard size={20} />, label: "Dashboard" },
         { to: "/scrape", icon: <Search size={20} />, label: "Scraping" },
-        { to: "/library", icon: <Library size={20} />, label: "Biblioteca" },
+        { to: "/library", icon: <Library size={20} />, label: "Templates" },
         { to: "/history", icon: <History size={20} />, label: "Histórico" },
         { to: "/settings", icon: <Settings size={20} />, label: "Configurações" },
     ];

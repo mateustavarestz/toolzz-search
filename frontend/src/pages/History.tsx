@@ -52,7 +52,7 @@ function HistoryItem({ item }: HistoryItemProps) {
                     </div>
                     <div className="rowText">
                         <strong className="rowTitle" title={String(urlItem)}>{String(urlItem)}</strong>
-                        <span className="rowSubtitle">{isLibrary ? "Biblioteca" : "Manual"}</span>
+                        <span className="rowSubtitle">{isLibrary ? "Templates" : "Manual"}</span>
                     </div>
                 </div>
 

@@ -66,7 +66,7 @@ export default function Dashboard() {
 
     const quickAccess = [
         {
-            title: "Biblioteca",
+            title: "Templates",
             desc: "Extratores prontos (Maps, Search)",
             icon: <MapPin size={24} />,
             color: "var(--color-blue-500)",

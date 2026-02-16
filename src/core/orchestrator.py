@@ -46,6 +46,9 @@ class ScraperOrchestrator:
         if self.storage:
             await self.storage.initialize()
 
+        if extra_metadata and "source" in extra_metadata:
+            browser_options["source"] = extra_metadata["source"]
+
         try:
             result = await self._scrape_with_retry(
                 url=url,
