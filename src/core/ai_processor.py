@@ -5,13 +5,12 @@ from typing import Any
 
 from loguru import logger
 from openai import OpenAI
-from openai import AuthenticationError as OpenAIAuthenticationError
 from openai import OpenAIError
 from pydantic import BaseModel
 
 from src.config.prompts import SYSTEM_PROMPT_GENERIC
 from src.config.settings import settings
-from src.core.errors import ModelAuthScraperError, ModelScraperError
+from src.core.errors import ModelScraperError
 from src.utils.cost_tracker import calculate_cost
 from src.utils.helpers import clean_html
 
@@ -20,9 +19,8 @@ class AIProcessor:
     """Processa screenshot + HTML com GPT-5 mini."""
 
     def __init__(self, api_key: str | None = None) -> None:
-        self.default_api_key = (api_key or settings.OPENAI_API_KEY or "").strip()
-        self.default_model = settings.OPENAI_MODEL
-        self.client = OpenAI(api_key=self.default_api_key) if self.default_api_key else None
+        self.client = OpenAI(api_key=api_key or settings.OPENAI_API_KEY)
+        self.model = settings.OPENAI_MODEL
 
     async def extract_structured_data(
         self,
@@ -35,19 +33,9 @@ class AIProcessor:
         system_prompt: str | None = None,
         extraction_goal: str | None = None,
         output_format: str = "list",
-        openai_api_key: str | None = None,
-        openai_model: str | None = None,
         max_html_chars: int = 50_000,
     ) -> dict[str, Any]:
         """Extrai dados seguindo schema Pydantic informado."""
-        resolved_api_key = (openai_api_key or self.default_api_key or "").strip()
-        api_key_source = "request" if (openai_api_key and openai_api_key.strip()) else "env"
-        if not resolved_api_key:
-            raise ModelAuthScraperError(
-                "OpenAI API key nao configurada. Informe em .env ou no campo de configuracao da interface."
-            )
-        resolved_model = (openai_model or self.default_model).strip() or self.default_model
-        client = self.client if (not openai_api_key and self.client) else OpenAI(api_key=resolved_api_key)
         html_truncated = clean_html(html, max_chars=max_html_chars)
         text_cut = text_content[:20_000]
         prompt = system_prompt or SYSTEM_PROMPT_GENERIC
@@ -126,7 +114,7 @@ class AIProcessor:
         ]
 
         logger.info("Chamando OpenAI para extracao estruturada...")
-        response = await self._run_chat_completion(messages=messages, client=client, model=resolved_model)
+        response = await self._run_chat_completion(messages=messages)
         content = response.choices[0].message.content or "{}"
         try:
             data = json.loads(content)
@@ -145,9 +133,7 @@ class AIProcessor:
                     ),
                 },
             ]
-            repair_response = await self._run_chat_completion(
-                messages=repair_messages, client=client, model=resolved_model
-            )
+            repair_response = await self._run_chat_completion(messages=repair_messages)
             repair_content = repair_response.choices[0].message.content or "{}"
             try:
                 data = json.loads(repair_content)
@@ -170,8 +156,7 @@ class AIProcessor:
         return {
             "data": data,
             "metadata": {
-                "model": resolved_model,
-                "api_key_source": api_key_source,
+                "model": self.model,
                 "tokens_used": tokens,
                 "cost_usd": cost_usd,
             },
@@ -179,28 +164,20 @@ class AIProcessor:
 
 
 
-    async def _run_chat_completion(
-        self,
-        messages: list[dict[str, Any]],
-        client: OpenAI,
-        model: str,
-    ) -> Any:
+    async def _run_chat_completion(self, messages: list[dict[str, Any]]) -> Any:
         try:
             return await asyncio.wait_for(
                 asyncio.to_thread(
-                    client.chat.completions.create,
-                    model=model,
+                    self.client.chat.completions.create,
+                    model=self.model,
                     messages=messages,
                     response_format={"type": "json_object"},
+                    max_completion_tokens=5000,
                 ),
                 timeout=75,
             )
         except asyncio.TimeoutError as exc:
             raise ModelScraperError("Timeout ao chamar API do modelo") from exc
-        except OpenAIAuthenticationError as exc:
-            raise ModelAuthScraperError(
-                f"Credencial OpenAI invalida/sem permissao: {exc}"
-            ) from exc
         except OpenAIError as exc:
             raise ModelScraperError(f"Erro da API do modelo: {exc}") from exc
 

@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     """Settings globais do scraper."""
 
     # OpenAI
-    OPENAI_API_KEY: str = ""
+    OPENAI_API_KEY: str
     OPENAI_MODEL: str = "gpt-5-mini-2025-08-07"
 
     # Playwright

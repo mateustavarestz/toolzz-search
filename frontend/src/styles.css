@@ -1,9 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-
 :root {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-  background: #141414;
-  color: #f5f7ff;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: #101828;
+  background: radial-gradient(1200px 600px at 20% -10%, #e0e7ff 0%, #f5f7fb 48%, #eef2f7 100%);
 }
 
 * {
@@ -13,24 +11,6 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #141414;
-  color: #f5f7ff;
-  font-size: 1rem;
-  line-height: 1.5;
-}
-
-h1,
-h2,
-h3,
-p,
-label,
-input,
-select,
-textarea,
-button,
-span,
-summary {
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .page {
@@ -40,15 +20,16 @@ summary {
 }
 
 .card {
-  border-radius: 16px;
+  border-radius: 20px;
   padding: 18px;
   margin-bottom: 14px;
 }
 
 .glass {
-  background: #1b1b1b;
-  border: 1px solid #262626;
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.32);
+  background: rgba(255, 255, 255, 0.76);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
 }
 
 .hero {
@@ -57,27 +38,24 @@ summary {
 
 .hero h1 {
   margin: 0;
-  font-size: 3rem;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: #f8f9ff;
+  font-size: 2rem;
+  letter-spacing: -0.02em;
 }
 
 .hero p {
   margin: 6px 0 0;
-  color: #b9bfd1;
-  font-size: 1rem;
+  color: #475467;
 }
 
 .apiStatus {
   margin-top: 10px;
   display: inline-block;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   border-radius: 999px;
   padding: 5px 10px;
-  border: 1px solid #30364a;
-  background: #1e2433;
-  color: #c7d7ff;
+  border: 1px solid #d0d5dd;
+  background: #f9f9f9;
+  color: #333;
 }
 
 .engineInfo {
@@ -110,15 +88,15 @@ summary {
 }
 
 .apiStatus.ok {
-  color: #8ed9ad;
-  border-color: #2d6944;
-  background: #18291f;
+  color: #067647;
+  border-color: #a6f4c5;
+  background: #ecfdf3;
 }
 
 .apiStatus.down {
-  color: #ffb3b3;
-  border-color: #6b2f36;
-  background: #2a181c;
+  color: #b42318;
+  border-color: #fecdca;
+  background: #fef3f2;
 }
 
 .sectionTitle {
@@ -134,46 +112,29 @@ summary {
 }
 
 .pill {
-  font-size: 0.875rem;
+  font-size: 0.78rem;
   border-radius: 999px;
   padding: 6px 10px;
-  background: #18317a;
-  color: #dce6ff;
-  border: 1px solid #2f4ea8;
+  background: #eff4ff;
+  color: #1d4ed8;
+  border: 1px solid #dbe7ff;
 }
 
 h1,
 h2 {
   margin: 0 0 10px;
-  color: #f8f9ff;
-}
-
-h1 {
-  font-size: 3rem;
-  line-height: 1.1;
-}
-
-h2 {
-  font-size: 2.25rem;
-  line-height: 1.2;
-}
-
-h3 {
-  font-size: 1.5rem;
-  line-height: 1.3;
-  margin: 0;
+  color: #111827;
 }
 
 .hint {
   margin: 0 0 12px;
-  color: #9ba3ba;
-  font-size: 0.875rem;
+  color: #667085;
 }
 
 .stageText {
   margin: 0 0 12px;
-  color: #b9bfd1;
-  font-size: 0.875rem;
+  color: #475467;
+  font-size: 0.9rem;
 }
 
 .resultPanel {
@@ -195,8 +156,8 @@ h3 {
 }
 
 .kpiCard {
-  background: #202020;
-  border: 1px solid #2f2f2f;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid #e4e7ec;
   border-radius: 12px;
   padding: 10px 12px;
   display: grid;
@@ -204,40 +165,38 @@ h3 {
 }
 
 .kpiCard span {
-  font-size: 0.875rem;
-  color: #9ba3ba;
+  font-size: 0.78rem;
+  color: #667085;
 }
 
 .kpiCard strong {
-  font-size: 1rem;
-  color: #f8f9ff;
+  font-size: 1.02rem;
+  color: #111827;
 }
 
 .okText {
-  color: #89d4aa !important;
+  color: #067647 !important;
 }
 
 .errorText {
-  color: #ff9b9b !important;
+  color: #b42318 !important;
 }
 
 .summaryBox {
-  border: 1px solid #2b4eb6;
-  background: #18223f;
+  border: 1px solid #dbe7ff;
+  background: #eff4ff;
   border-radius: 12px;
   padding: 12px;
 }
 
 .summaryBox h3 {
   margin: 0 0 6px;
-  font-size: 1.5rem;
-  color: #f0f4ff;
+  font-size: 0.95rem;
 }
 
 .summaryBox p {
   margin: 0;
-  color: #e0e6f7;
-  font-size: 1rem;
+  color: #1f2937;
 }
 
 .findingList {
@@ -246,8 +205,8 @@ h3 {
 }
 
 .findingCard {
-  border: 1px solid #2f2f2f;
-  background: #1f1f1f;
+  border: 1px solid #e4e7ec;
+  background: rgba(255, 255, 255, 0.86);
   border-radius: 12px;
   padding: 12px;
   display: grid;
@@ -256,20 +215,19 @@ h3 {
 
 .findingCard h3 {
   margin: 0;
-  font-size: 1.5rem;
-  color: #f8f9ff;
+  font-size: 0.97rem;
 }
 
 .findingCard p {
   margin: 0;
-  color: #d4d9e8;
-  font-size: 1rem;
+  color: #344054;
+  font-size: 0.9rem;
 }
 
 .findingCard a {
-  color: #78a0ff;
+  color: #175cd3;
   text-decoration: none;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
 }
 
 .findingCard a:hover {
@@ -309,41 +267,40 @@ h3 {
 }
 
 .chip {
-  font-size: 0.875rem;
-  border: 1px solid #2f4ea8;
-  background: #1c2547;
+  font-size: 0.74rem;
+  border: 1px solid #d0d5dd;
+  background: #f8fafc;
   border-radius: 999px;
   padding: 4px 8px;
-  color: #d8e4ff;
+  color: #344054;
 }
 
 .errorPanel {
-  border: 1px solid #6b2f36;
-  background: #2a181c;
+  border: 1px solid #fecdca;
+  background: #fef3f2;
   border-radius: 12px;
   padding: 12px;
 }
 
 .errorPanel h3 {
   margin: 0 0 6px;
-  color: #ffd1d1;
+  color: #912018;
 }
 
 .errorPanel p {
   margin: 0 0 6px;
-  color: #ffc0c0;
-  font-size: 1rem;
+  color: #7a271a;
 }
 
 .jsonBox {
-  border-top: 1px dashed #2f2f2f;
+  border-top: 1px dashed #d0d5dd;
   padding-top: 8px;
 }
 
 .jsonBox summary {
   cursor: pointer;
-  color: #b9bfd1;
-  font-size: 0.875rem;
+  color: #344054;
+  font-size: 0.86rem;
   margin-bottom: 6px;
 }
 
@@ -358,8 +315,8 @@ h3 {
 }
 
 label {
-  font-size: 0.875rem;
-  color: #c2c8da;
+  font-size: 0.84rem;
+  color: #475467;
   font-weight: 600;
   display: block;
   margin-bottom: 6px;
@@ -369,21 +326,20 @@ input,
 select,
 textarea {
   width: 100%;
-  border: 1px solid #2f2f2f;
+  border: 1px solid #d0d5dd;
   border-radius: 12px;
-  background: #111111;
-  color: #f5f7ff;
+  background: rgba(255, 255, 255, 0.88);
+  color: #111827;
   padding: 10px 12px;
   outline: none;
   transition: border-color 120ms ease, box-shadow 120ms ease;
-  font-size: 1rem;
 }
 
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: #1e5cff;
-  box-shadow: 0 0 0 3px rgba(30, 92, 255, 0.28);
+  border-color: #6d9fff;
+  box-shadow: 0 0 0 4px rgba(109, 159, 255, 0.16);
 }
 
 textarea {
@@ -403,7 +359,6 @@ button {
   border-radius: 999px;
   padding: 10px 16px;
   font-weight: 600;
-  font-size: 0.875rem;
   cursor: pointer;
   border: 1px solid transparent;
   transition: transform 80ms ease, filter 120ms ease;
@@ -418,15 +373,14 @@ button:active {
 }
 
 .primary {
-  background: #1e5cff;
+  background: linear-gradient(180deg, #0a84ff, #0066d6);
   color: #fff;
-  border-color: #1e5cff;
 }
 
 .secondary {
-  background: #191f33;
-  color: #dbe4ff;
-  border-color: #2f4ea8;
+  background: #fff;
+  color: #111827;
+  border-color: #d0d5dd;
 }
 
 button:disabled {
@@ -437,14 +391,14 @@ button:disabled {
 pre {
   white-space: pre-wrap;
   word-break: break-word;
-  background: #0f1117;
+  background: #0f172a;
   color: #d1e5ff;
-  border: 1px solid #222739;
+  border: 1px solid #1f2937;
   border-radius: 14px;
   padding: 12px;
   min-height: 180px;
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 0.83rem;
   line-height: 1.35;
 }
 
@@ -462,21 +416,20 @@ pre {
 
 .historyItem {
   border-radius: 12px;
-  border: 1px solid #2f2f2f;
-  background: #1f1f1f;
+  border: 1px solid #e4e7ec;
+  background: rgba(255, 255, 255, 0.78);
   padding: 10px 12px;
   display: grid;
   gap: 2px;
 }
 
 .historyItem strong {
-  font-size: 1rem;
-  color: #f8f9ff;
+  font-size: 0.9rem;
 }
 
 .historyItem span {
-  font-size: 0.875rem;
-  color: #c2c8da;
+  font-size: 0.82rem;
+  color: #344054;
 }
 
 .errorBadge {
@@ -484,19 +437,8 @@ pre {
   width: fit-content;
   border-radius: 999px;
   padding: 4px 8px;
-  font-size: 0.875rem;
-  color: #ffc0c0;
-  background: #2a181c;
-  border: 1px solid #6b2f36;
-}
-
-button svg,
-.icon {
-  color: #1e5cff;
-}
-
-small,
-.small {
-  font-size: 0.875rem;
-  line-height: 1.4;
+  font-size: 0.75rem;
+  color: #7a271a;
+  background: #fef3f2;
+  border: 1px solid #fecdca;
 }

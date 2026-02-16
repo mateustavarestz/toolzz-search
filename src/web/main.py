@@ -76,8 +76,6 @@ class ScrapeRequest(BaseModel):
     auto_scroll: bool = True
     scroll_steps: int = Field(default=6, ge=1, le=20)
     output_format: str = Field(default="list", pattern="^(list|summary|report)$")
-    openai_api_key: str | None = Field(default=None, max_length=300)
-    openai_model: str | None = Field(default=None, max_length=120)
 
 
 app.add_middleware(
@@ -135,15 +133,11 @@ async def scrape(payload: ScrapeRequest) -> dict[str, Any]:
 
     start = time.perf_counter()
     scraper = ScraperOrchestrator(with_storage=True)
-    runtime_api_key = payload.openai_api_key.strip() if payload.openai_api_key else None
-    runtime_model = payload.openai_model.strip() if payload.openai_model else None
     result = await scraper.scrape(
         url=payload.url,
         schema=schema_cls,
         system_prompt=system_prompt,
         extraction_goal=payload.user_prompt,
-        openai_api_key=runtime_api_key,
-        openai_model=runtime_model,
         wait_until=payload.wait_until,
         timeout=payload.timeout,
         full_page=payload.full_page,
