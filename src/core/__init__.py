@@ -1,0 +1,2 @@
+"""Componentes core do scraper."""
+
