@@ -76,6 +76,8 @@ class ScrapeRequest(BaseModel):
     auto_scroll: bool = True
     scroll_steps: int = Field(default=6, ge=1, le=20)
     output_format: str = Field(default="list", pattern="^(list|summary|report)$")
+    api_key: str | None = Field(default=None, description="Optional OpenAI API Key override")
+    source: str | None = Field(default="scraper_manual", description="Source of the scrape request (e.g. library:google_maps)")
 
 
 app.add_middleware(
@@ -122,6 +124,57 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+import json
+import os
+from pathlib import Path
+
+# ... (existing imports)
+
+CUSTOM_PROMPTS_FILE = Path("custom_prompts.json")
+
+def load_custom_prompts() -> dict[str, str]:
+    if not CUSTOM_PROMPTS_FILE.exists():
+        return {}
+    try:
+        return json.loads(CUSTOM_PROMPTS_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+def save_custom_prompts(prompts: dict[str, str]) -> None:
+    CUSTOM_PROMPTS_FILE.write_text(json.dumps(prompts, indent=2), encoding="utf-8")
+
+# ... (existing code until PROMPT_MAP)
+
+def get_effective_prompt(name: str) -> str:
+    custom = load_custom_prompts()
+    if name in custom:
+        return custom[name]
+    return PROMPT_MAP.get(name, SYSTEM_PROMPT_GENERIC)
+
+# ... (existing code)
+
+class PromptUpdateRequest(BaseModel):
+    prompts: dict[str, str]
+
+@app.get("/api/settings/prompts")
+async def get_prompts() -> dict[str, str]:
+    """Retorna todos os prompts (padrao + customizados)."""
+    custom = load_custom_prompts()
+    # Merge defaults with custom, preferring custom
+    effective = PROMPT_MAP.copy()
+    effective.update(custom)
+    return effective
+
+@app.post("/api/settings/prompts")
+async def update_prompts(payload: PromptUpdateRequest) -> dict[str, bool]:
+    """Salva prompts customizados."""
+    # Filter only known keys or allow new ones? Let's allow overriding known ones for now.
+    # We will save the entire payload as custom prompts
+    save_custom_prompts(payload.prompts)
+    return {"success": True}
+
+# ... (update scrape function to use get_effective_prompt)
+
 @app.post("/api/scrape")
 async def scrape(payload: ScrapeRequest) -> dict[str, Any]:
     """Executa scraping com parametros enviados pela interface."""
@@ -129,10 +182,11 @@ async def scrape(payload: ScrapeRequest) -> dict[str, Any]:
     if not schema_cls:
         return {"success": False, "error": f"Schema invalido: {payload.schema_name}"}
 
-    system_prompt = PROMPT_MAP.get(payload.prompt, SYSTEM_PROMPT_GENERIC)
+    system_prompt = get_effective_prompt(payload.prompt)
 
     start = time.perf_counter()
-    scraper = ScraperOrchestrator(with_storage=True)
+    scraper = ScraperOrchestrator(with_storage=True, api_key=payload.api_key)
+    # ... (rest of the function)
     result = await scraper.scrape(
         url=payload.url,
         schema=schema_cls,
@@ -145,6 +199,7 @@ async def scrape(payload: ScrapeRequest) -> dict[str, Any]:
         auto_scroll=payload.auto_scroll,
         scroll_steps=payload.scroll_steps,
         output_format=payload.output_format,
+        extra_metadata={"source": payload.source},
     )
     elapsed = time.perf_counter() - start
     SCRAPE_DURATION_SECONDS.observe(elapsed)

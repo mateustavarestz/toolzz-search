@@ -24,9 +24,9 @@ from src.utils.logger import configure_logging
 class ScraperOrchestrator:
     """Executa pipeline completo: browser -> IA -> validacao -> storage."""
 
-    def __init__(self, with_storage: bool = True) -> None:
+    def __init__(self, with_storage: bool = True, api_key: str | None = None) -> None:
         configure_logging()
-        self.ai_processor = AIProcessor()
+        self.ai_processor = AIProcessor(api_key=api_key)
         self.validator = DataValidator()
         self.storage = StorageManager() if with_storage else None
         self._domain_locks: dict[str, asyncio.Semaphore] = {}
@@ -39,6 +39,7 @@ class ScraperOrchestrator:
         system_prompt: str | None = None,
         extraction_goal: str | None = None,
         output_format: str = "list",
+        extra_metadata: dict[str, Any] | None = None,
         **browser_options: Any,
     ) -> dict[str, Any]:
         """Executa scraping completo em uma URL e persiste a tentativa."""
@@ -54,6 +55,10 @@ class ScraperOrchestrator:
                 output_format=output_format,
                 **browser_options,
             )
+            # Merge extra_metadata into result metadata if success
+            if extra_metadata and "metadata" in result:
+                result["metadata"].update(extra_metadata)
+
         except Exception as exc:
             error_type, retryable = classify_exception(exc)
             logger.exception(f"Falha final no scraping ({error_type}): {exc}")
@@ -68,6 +73,8 @@ class ScraperOrchestrator:
                     "retryable": retryable,
                 },
             }
+            if extra_metadata:
+                result["metadata"].update(extra_metadata)
 
         record_id: int | None = None
         if self.storage:
